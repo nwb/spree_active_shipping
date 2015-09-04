@@ -176,8 +176,8 @@ module Spree
               rate_estimates = xml.root.css('> RatedShipment').map do |rated_shipment|
                 service_code    = rated_shipment.at('Service/Code').text
                 negotiated_rate = rated_shipment.at('NegotiatedRates/NetSummaryCharges/GrandTotal/MonetaryValue').try(:text)
-                total_price     = negotiated_rate.blank? ? rated_shipment.at('TotalCharges/MonetaryValue').try(:text).to_f : negotiated_rate.to_f
-                currency        = negotiated_rate.blank? ? rated_shipment.at('TotalCharges/CurrencyCode').text : rated_shipment.at('NegotiatedRates/NetSummaryCharges/GrandTotal/CurrencyCode').text
+                total_price     = negotiated_rate.blank? ? rated_shipment.at('RatedPackage/TotalCharges/MonetaryValue').try(:text).to_f : negotiated_rate.to_f
+                currency        = negotiated_rate.blank? ? rated_shipment.at('RatedPackage/TotalCharges/CurrencyCode').text : rated_shipment.at('NegotiatedRates/NetSummaryCharges/GrandTotal/CurrencyCode').text
 
                 ::ActiveShipping::RateEstimate.new(origin, destination, ::ActiveShipping::UPS.name,
                     service_name_for(origin, service_code),

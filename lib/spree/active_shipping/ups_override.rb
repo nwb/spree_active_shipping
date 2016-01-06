@@ -178,6 +178,7 @@ module Spree
                 service_code    = rated_shipment.at('Service/Code').text
                 negotiated_rate = rated_shipment.at('NegotiatedRates/NetSummaryCharges/GrandTotal/MonetaryValue').try(:text)
                 total_price     = negotiated_rate.blank? ? rated_shipment.at('RatedPackage/TotalCharges/MonetaryValue').try(:text).to_f : negotiated_rate.to_f
+                total_price = rated_shipment.at('TotalCharges/MonetaryValue').try(:text).to_f unless total_price>0.0
                 currency        = negotiated_rate.blank? ? rated_shipment.at('TotalCharges/CurrencyCode').text : rated_shipment.at('NegotiatedRates/NetSummaryCharges/GrandTotal/CurrencyCode').text
 
                 ::ActiveShipping::RateEstimate.new(origin, destination, ::ActiveShipping::UPS.name,
@@ -242,6 +243,61 @@ module Spree
               end
             end
             return rate_estimates
+          end
+
+          private
+          def build_package_node(xml, package, options = {})
+            xml.Package do
+
+              # not implemented:  * Shipment/Package/PackagingType element
+              #                   * Shipment/Package/Description element
+
+              xml.PackagingType do
+                xml.Code('02')
+              end
+
+              xml.Dimensions do
+                xml.UnitOfMeasurement do
+                  xml.Code(options[:imperial] ? 'IN' : 'CM')
+                end
+                [:length, :width, :height].each do |axis|
+                  value = ((options[:imperial] ? package.inches(axis) : package.cm(axis)).to_f * 1000).round / 1000.0 # 3 decimals
+                  xml.public_send(axis.to_s.capitalize, [value, 0.1].max)
+                end
+              end
+
+              xml.PackageWeight do
+
+                  code = options[:imperial] ? 'LBS' : 'KGS'
+                  weight = options[:imperial] ? package.lbs : package.kgs
+
+                xml.UnitOfMeasurement do
+                  xml.Code(code)
+                end
+
+                value = ((weight).to_f * 100).round / 1000.0 # 3 decimals
+                xml.Weight([value, 0.1].max)
+              end
+
+
+              Array(package.options[:reference_numbers]).each do |reference_number_info|
+                xml.ReferenceNumber do
+                  xml.Code(reference_number_info[:code] || "")
+                  xml.Value(reference_number_info[:value])
+                end
+              end
+
+              xml.PackageServiceOptions do
+                if delivery_confirmation = package.options[:delivery_confirmation]
+                  xml.DeliveryConfirmation do
+                    xml.DCISType(PACKAGE_DELIVERY_CONFIRMATION_CODES[delivery_confirmation])
+                  end
+                end
+              end
+
+              # not implemented:  * Shipment/Package/LargePackageIndicator element
+              #                   * Shipment/Package/AdditionalHandling element
+            end
           end
 
         end

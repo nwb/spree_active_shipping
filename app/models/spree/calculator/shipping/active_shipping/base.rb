@@ -272,7 +272,7 @@ module Spree
             if shipment_packages.empty?
               {}
             else
-              retrieve_rates(origin, destination, shipment_packages)
+              retrieve_rates(origin, destination, shipment_packages[0..0])
             end
           end
         end
